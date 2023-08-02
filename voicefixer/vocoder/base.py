@@ -77,7 +77,7 @@ class Vocoder(nn.Module):
             wav_re = self.model(mel)
             save_wave(tensor2numpy(wav_re * 2 ** 15), out_path, sample_rate=self.rate)
 
-    def init_models(self):
+    def _init_models(self):
         if not os.path.exists(Config.ckpt):
             os.makedirs(os.path.dirname(Config.ckpt), exist_ok=True)
             print("Downloading the weight of neural vocoder: TFGAN")
