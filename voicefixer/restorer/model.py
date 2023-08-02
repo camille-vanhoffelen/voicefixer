@@ -1,19 +1,21 @@
 # import pytorch_lightning as pl
 
-import torch.utils
-from voicefixer.tools.mel_scale import MelScale
-import torch.utils.data
-import matplotlib.pyplot as plt
+import urllib.request
+
 import librosa.display
-from voicefixer.vocoder.base import Vocoder
-from voicefixer.tools.pytorch_util import *
+import matplotlib.pyplot as plt
+import torch.utils
+import torch.utils.data
+from matplotlib import cm
+
 from voicefixer.restorer.model_kqq_bn import UNetResComplex_100Mb
+from voicefixer.tools.io import load_json, write_json
+from voicefixer.tools.mel_scale import MelScale
+from voicefixer.tools.modules.fDomainHelper import FDomainHelper
+from voicefixer.tools.pytorch_util import *
 from voicefixer.tools.random_ import *
 from voicefixer.tools.wav import *
-from voicefixer.tools.modules.fDomainHelper import FDomainHelper
-
-from voicefixer.tools.io import load_json, write_json
-from matplotlib import cm
+from voicefixer.vocoder.base import Vocoder
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "True"
 EPS = 1e-8
@@ -160,6 +162,8 @@ class VoiceFixer(nn.Module):
         pad_mode = "reflect"
         window = "hann"
         freeze_parameters = True
+
+        self._init_models()
 
         # self.save_hyperparameters()
         self.nsrc = nsrc
@@ -678,3 +682,28 @@ class VoiceFixer(nn.Module):
             val_max.append(torch.max(each))
             val_min.append(torch.min(each))
         return max(val_max), min(val_min)
+
+    def _init_models(self):
+        meta = {
+            "voicefixer_fe": {
+                "path": os.path.join(
+                    os.path.expanduser("~"),
+                    ".cache/voicefixer/analysis_module/checkpoints/vf.ckpt",
+                ),
+                "url": "https://zenodo.org/record/5600188/files/vf.ckpt?download=1",
+            },
+        }
+
+        if not os.path.exists(meta["voicefixer_fe"]["path"]):
+            os.makedirs(os.path.dirname(meta["voicefixer_fe"]["path"]), exist_ok=True)
+            print("Downloading the main structure of voicefixer")
+
+            urllib.request.urlretrieve(
+                meta["voicefixer_fe"]["url"], meta["voicefixer_fe"]["path"]
+            )
+            print(
+                "Weights downloaded in: {} Size: {}".format(
+                    meta["voicefixer_fe"]["path"],
+                    os.path.getsize(meta["voicefixer_fe"]["path"]),
+                )
+            )

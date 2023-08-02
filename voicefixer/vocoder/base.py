@@ -1,10 +1,10 @@
-from voicefixer.vocoder.model.generator import Generator
-from voicefixer.tools.wav import read_wave, save_wave
-from voicefixer.tools.pytorch_util import *
-from voicefixer.vocoder.model.util import *
-from voicefixer.vocoder.config import Config
 import os
-import numpy as np
+import urllib.request
+
+from voicefixer.tools.pytorch_util import *
+from voicefixer.tools.wav import read_wave, save_wave
+from voicefixer.vocoder.model.generator import Generator
+from voicefixer.vocoder.model.util import *
 
 
 class Vocoder(nn.Module):
@@ -12,7 +12,8 @@ class Vocoder(nn.Module):
         super(Vocoder, self).__init__()
         Config.refresh(sample_rate)
         self.rate = sample_rate
-        if(not os.path.exists(Config.ckpt)):
+        self._init_models()
+        if (not os.path.exists(Config.ckpt)):
             raise RuntimeError("Error 1: The checkpoint for synthesis module / vocoder (model.ckpt-1490000_trimed) is not found in ~/.cache/voicefixer/synthesis_module/44100. \
                                 By default the checkpoint should be download automatically by this program. Something bad may happened. Apologies for the inconvenience.\
                                 But don't worry! Alternatively you can download it directly from Zenodo: https://zenodo.org/record/5600188/files/model.ckpt-1490000_trimed.pt?download=1")
@@ -74,7 +75,21 @@ class Vocoder(nn.Module):
         mel = try_tensor_cuda(mel, cuda=cuda)
         with torch.no_grad():
             wav_re = self.model(mel)
-            save_wave(tensor2numpy(wav_re * 2**15), out_path, sample_rate=self.rate)
+            save_wave(tensor2numpy(wav_re * 2 ** 15), out_path, sample_rate=self.rate)
+
+    def init_models(self):
+        if not os.path.exists(Config.ckpt):
+            os.makedirs(os.path.dirname(Config.ckpt), exist_ok=True)
+            print("Downloading the weight of neural vocoder: TFGAN")
+            urllib.request.urlretrieve(
+                "https://zenodo.org/record/5469951/files/model.ckpt-1490000_trimed.pt?download=1",
+                Config.ckpt,
+            )
+            print(
+                "Weights downloaded in: {} Size: {}".format(
+                    Config.ckpt, os.path.getsize(Config.ckpt)
+                )
+            )
 
 
 if __name__ == "__main__":
